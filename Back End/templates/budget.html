@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Budget</title>
+  <style>
+    #budget-area {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 15px;
+      margin-top: 20px;
+      align-items: flex-start;
+    }
+    .budget-box {
+      width: 220px;
+      height: 200px;
+      padding: 10px;
+      border: 2px solid #333;
+      background: #f2f2f2;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .budget-box.locked {
+      background: #ddd;
+      border-color: #999;
+    }
+    .budget-box input {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 6px;
+    }
+    .add-btn{
+      align-self: flex-start;
+      width: 32px;
+      height: 32px;
+      font-size: 20px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <nav> <a href="/profile">Profile</a> | <a href="/setting">Setting</a></nav>
+  <nav><a href="/dashboard">Dashboard</a> | <a href="/budget">Budget</a> | <a href="/expenses">Expenses</a> | <a href="/">Log out</a></nav>
+  <h1>Budget</h1>
+
+  <p>Budget page should have possibly 3 budget max (free).</p>
+  <p>Add title of budget in bold, description option (hover?)</p>
+  <button id="create-btn">Create Budget</button>
+  <button id="delete-btn">Delete Budget</button>
+
+  <div id="budget-area"></div>
+
+  <script>
+    const area = document.getElementById("budget-area");
+
+    // adds box to type in
+    function addTextBox(box, plusBtn){
+      const input = document.createElement("input");
+      input.type = "text";
+      input.placeholder = "Type here ";
+      box.insertBefore(input, plusBtn);
+      input.focus();
+    }
+
+    //locks the box once a new budget is created
+    function lockBox(box){
+      box.classList.add("locked");
+      box.querySelectorAll("input").forEach(i => i.disabled = true);
+      const plus = box.querySelector(".add-btn");
+      if (plus) plus.remove();
+    }
+
+    //  creates budget and lock previous box
+    document.getElementById("create-btn").addEventListener("click", () => {
+      const previous = area.lastElementChild;
+      if (previous) lockBox(previous);
+
+      const box = document.createElement("div");
+      box.className = "budget-box";
+
+      const plusBtn = document.createElement("button");
+      plusBtn.className = "add-btn";
+      plusBtn.textContent = "+";
+      plusBtn.addEventListener("click", () => addTextBox(box, plusBtn));
+
+      box.appendChild(plusBtn);
+      area.appendChild(box);
+      
+      addTextBox(box, plusBtn);
+    });
+
+    // Delete Budget: remove the most recently created square
+    document.getElementById("delete-btn").addEventListener("click", () => {
+      if (area.lastElementChild) {
+        area.removeChild(area.lastElementChild);
+      }
+    });
+  </script>
+</body>
+</html>
