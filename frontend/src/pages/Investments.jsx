@@ -1,8 +1,25 @@
 function Investments() {
     return (
         <div className="dashboard-content">
-            <h1>Investments</h1>
-            <p>Investment functionality will be added here.</p>
+
+            <div className="dashboard-heading">
+
+                <div>
+                    <h1>Investments</h1>
+                    <p>View and manage your connected investment accounts.</p>
+                </div>
+
+                <div className="dashboard-actions">
+                    <button
+                        type="button"
+                        className="btn new-budget-button"
+                    >
+                        Connect to Plaid
+                    </button>
+                </div>
+
+            </div>
+
         </div>
     )
 }
