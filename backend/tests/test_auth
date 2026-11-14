@@ -1,0 +1,113 @@
+"""Run from the repository root:  python -m pytest backend"""
+
+import sys
+from pathlib import Path
+
+import pytest
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+
+from backend.app import create_app  # noqa: E402
+from database.db import get_connection  # noqa: E402
+
+ALEX = {
+    "first_name": "Alex",
+    "last_name": "Lee",
+    "email": "alex@example.com",
+    "password": "correct-horse",
+}
+
+
+@pytest.fixture
+def client(tmp_path, monkeypatch):
+    monkeypatch.setenv("CACHE_MONEY_DB", str(tmp_path / "test.db"))
+    return create_app().test_client()
+
+
+def test_register_stores_a_hashed_password(client):
+    response = client.post("/api/auth/register", json=ALEX)
+    assert response.status_code == 201
+    assert response.get_json()["user"]["email"] == "alex@example.com"
+    assert "password" not in str(response.get_json())
+
+    conn = get_connection()
+    stored = conn.execute("SELECT password_hash FROM users").fetchone()[0]
+    conn.close()
+    assert ALEX["password"] not in stored
+
+
+def test_register_rejects_duplicate_email_ignoring_case(client):
+    client.post("/api/auth/register", json=ALEX)
+    response = client.post(
+        "/api/auth/register", json={**ALEX, "email": "ALEX@example.com"}
+    )
+    assert response.status_code == 409
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        {"password": "short"},
+        {"email": "not-an-email"},
+        {"first_name": "   "},
+        {"last_name": None},
+    ],
+)
+def test_register_rejects_bad_input(client, change):
+    response = client.post("/api/auth/register", json={**ALEX, **change})
+    assert response.status_code == 400
+    assert response.get_json()["error"]
+
+
+def test_login_then_me_then_logout(client):
+    client.post("/api/auth/register", json=ALEX)
+    assert client.get("/api/auth/me").status_code == 401
+
+    response = client.post(
+        "/api/auth/login",
+        json={"email": "Alex@Example.com", "password": ALEX["password"]},
+    )
+    assert response.status_code == 200
+    assert "HttpOnly" in response.headers["Set-Cookie"]
+
+    me = client.get("/api/auth/me")
+    assert me.status_code == 200
+    assert me.get_json()["user"]["first_name"] == "Alex"
+
+    client.post("/api/auth/logout")
+    assert client.get("/api/auth/me").status_code == 401
+
+
+def test_login_rejects_wrong_password_and_unknown_email(client):
+    client.post("/api/auth/register", json=ALEX)
+    wrong = client.post(
+        "/api/auth/login", json={"email": ALEX["email"], "password": "wrong-password"}
+    )
+    unknown = client.post(
+        "/api/auth/login", json={"email": "nobody@example.com", "password": "whatever1"}
+    )
+    assert wrong.status_code == unknown.status_code == 401
+    assert wrong.get_json() == unknown.get_json()
+
+
+def test_remember_me_sets_a_lasting_cookie(client):
+    client.post("/api/auth/register", json=ALEX)
+    creds = {"email": ALEX["email"], "password": ALEX["password"]}
+
+    plain = client.post("/api/auth/login", json=creds)
+    assert "Max-Age" not in plain.headers["Set-Cookie"]
+
+    remembered = client.post("/api/auth/login", json={**creds, "remember_me": True})
+    assert "Max-Age=2592000" in remembered.headers["Set-Cookie"]
+
+
+def test_expired_session_is_rejected(client):
+    client.post("/api/auth/register", json=ALEX)
+    client.post(
+        "/api/auth/login", json={"email": ALEX["email"], "password": ALEX["password"]}
+    )
+    conn = get_connection()
+    conn.execute("UPDATE sessions SET expires_at = datetime('now', '-1 minute')")
+    conn.commit()
+    conn.close()
+    assert client.get("/api/auth/me").status_code == 401
