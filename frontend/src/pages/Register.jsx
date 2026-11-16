@@ -1,17 +1,37 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 
+import { registerUser } from '../api'
+
 function Register() {
     const [showPassword, setShowPassword] = useState(false)
 
+    const [error, setError] = useState('')
+    const [submitting, setSubmitting] = useState(false)
+
     const navigate = useNavigate()
 
-    function handleSubmit(event) {
+    async function handleSubmit(event) {
         event.preventDefault()
 
-        // Temporary prototype behavior.
-        // Account creation will connect to the backend later.
-        navigate('/login')
+        const form = new FormData(event.currentTarget)
+
+        setError('')
+        setSubmitting(true)
+
+        try {
+            await registerUser({
+                firstName: form.get('firstName'),
+                lastName: form.get('lastName'),
+                email: form.get('email'),
+                password: form.get('password'),
+            })
+
+            navigate('/login', { state: { registered: true } })
+        } catch (err) {
+            setError(err.message)
+            setSubmitting(false)
+        }
     }
 
     return (
@@ -32,6 +52,12 @@ function Register() {
                         Create your account to start managing your finances.
                     </p>
 
+                    {error && (
+                        <div className="alert alert-danger" role="alert">
+                            {error}
+                        </div>
+                    )}
+
                     <form onSubmit={handleSubmit}>
 
                         <div className="row">
@@ -46,6 +72,8 @@ function Register() {
 
                                 <input
                                     id="first-name"
+                                    name="firstName"
+                                    autoComplete="given-name"
                                     type="text"
                                     className="form-control"
                                     placeholder="Alex"
@@ -63,6 +91,8 @@ function Register() {
 
                                 <input
                                     id="last-name"
+                                    name="lastName"
+                                    autoComplete="family-name"
                                     type="text"
                                     className="form-control"
                                     placeholder="Lee"
@@ -82,6 +112,8 @@ function Register() {
 
                             <input
                                 id="register-email"
+                                name="email"
+                                autoComplete="email"
                                 type="email"
                                 className="form-control"
                                 placeholder="you@example.com"
@@ -102,6 +134,8 @@ function Register() {
 
                                 <input
                                     id="register-password"
+                                    name="password"
+                                    autoComplete="new-password"
                                     type={showPassword ? 'text' : 'password'}
                                     className="form-control"
                                     placeholder="At least 8 characters"
@@ -128,8 +162,9 @@ function Register() {
                         <button
                             type="submit"
                             className="btn auth-primary-button w-100"
+                            disabled={submitting}
                         >
-                            Create account
+                            {submitting ? 'Creating account…' : 'Create account'}
                         </button>
 
                     </form>
