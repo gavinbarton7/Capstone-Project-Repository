@@ -3,12 +3,20 @@
 <head><title>Sign Up</title></head>
 <body>
   <h1>Sign Up</h1>
-  <p>Probably keep name. Can link account to replace name</p>
-  <form action="/login" method="POST">
-    <input type="text" name="name" placeholder="First Name">
-    <input type="email" name="email" placeholder="Email">
-    <input type="password" name="password" placeholder="Password">
-    <button type="submit">Login</button>
+  <!-- Note: Probably keep name. Can link account to replace name -->
+
+  {% if error %}
+    <p style="color: #b00020;">{{ error }}</p>
+  {% endif %}
+
+  <form action="/signup" method="POST">
+    <input type="text" name="first_name" placeholder="First Name" value="{{ form.first_name if form }}" required>
+    <input type="text" name="last_name" placeholder="Last Name" value="{{ form.last_name if form }}" required>
+    <input type="email" name="email" placeholder="Email" value="{{ form.email if form }}" required>
+    <input type="password" name="password" placeholder="Password (8+ characters)" minlength="8" required>
+    <button type="submit">Create</button>
   </form>
+
+  <p>Already have an account? <a href="/login">Log in</a></p>
 </body>
 </html>
