@@ -8,6 +8,7 @@ import {
 
 import TopNavbar from './components/navigation/TopNavbar'
 import UserPanel from './components/layouts/UserPanel'
+import ProtectedRoute from './components/ProtectedRoute'
 
 import Login from './pages/Login'
 import Register from './pages/Register'
@@ -57,37 +58,41 @@ function App() {
                     element={<Register />}
                 />
 
-                <Route element={<MainLayout />}>
+                <Route element={<ProtectedRoute />}>
 
-                    <Route
-                        path="/dashboard"
-                        element={<Dashboard />}
-                    />
+                    <Route element={<MainLayout />}>
 
-                    <Route
-                        path="/accounts"
-                        element={<BankAccounts />}
-                    />
+                        <Route
+                            path="/dashboard"
+                            element={<Dashboard />}
+                        />
 
-                    <Route
-                        path="/investments"
-                        element={<Investments />}
-                    />
+                        <Route
+                            path="/accounts"
+                            element={<BankAccounts />}
+                        />
 
-                    <Route
-                        path="/expenses"
-                        element={<Expenses />}
-                    />
+                        <Route
+                            path="/investments"
+                            element={<Investments />}
+                        />
 
-                    <Route
-                        path="/settings"
-                        element={<Settings />}
-                    />
+                        <Route
+                            path="/expenses"
+                            element={<Expenses />}
+                        />
 
-                    <Route
-                        path="/profile"
-                        element={<Profile />}
-                    />
+                        <Route
+                            path="/settings"
+                            element={<Settings />}
+                        />
+
+                        <Route
+                            path="/profile"
+                            element={<Profile />}
+                        />
+
+                    </Route>
 
                 </Route>
 
