@@ -21,13 +21,17 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from flask import Flask, jsonify  # noqa: E402
 
 from backend.auth import auth_bp  # noqa: E402
+from backend.plaid_routes import plaid_bp  # noqa: E402
 from database.db import init_db  # noqa: E402
 
 
 def create_app():
     app = Flask(__name__)
+
     init_db()  # creates the database file and tables if they are missing
+
     app.register_blueprint(auth_bp)
+    app.register_blueprint(plaid_bp, url_prefix="/api/plaid")
 
     @app.errorhandler(404)
     def not_found(_error):
@@ -41,4 +45,7 @@ def create_app():
 
 
 if __name__ == "__main__":
-    create_app().run(port=8000, debug=os.environ.get("FLASK_DEBUG") == "1")
+    create_app().run(
+        port=8000,
+        debug=os.environ.get("FLASK_DEBUG") == "1"
+    )
