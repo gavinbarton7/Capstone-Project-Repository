@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Dashboard</title>
+  <style>
+    .item-row { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+    .title-input { width: 60%; padding: 6px; font-weight: bold; box-sizing: border-box; }
+    .amount-input { width: 100%; padding: 10px; box-sizing: border-box; }
+
+    #create-form {
+      width: 320px;
+      margin-top: 15px;
+      padding: 12px;
+      border: 2px solid #333;
+      background: #f2f2f2;
+    }
+    .add-btn { width: 32px; height: 32px; font-size: 20px; cursor: pointer; }
+
+    #budget-display { margin-top: 20px; }
+    .budget-card {
+      width: 360px;
+      padding: 12px 14px;
+      border: 2px solid #333;
+      background: #fafafa;
+    }
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    .card-header h2 { margin: 0; font-size: 18px; }
+    .item { margin-bottom: 10px; }
+    .item .title { font-weight: bold; }
+    .muted { color: #777; font-size: 13px; margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <nav> <a href="/profile">Profile</a> | <a href="/setting">Setting</a></nav>
+  <nav><a href="/dashboard">Dashboard</a> | <a href="/budget">Budget</a> | <a href="/expenses">Expenses</a> | <a href="/logout">Log out</a></nav>
+  <h1>Dashboard</h1>
+  <p>Welcome, {{ user.first_name }} {{ user.last_name }}!</p>
+
+  <button id="create-btn">Create Budget</button>
+
+  <!-- Shown only while the user is making a new budget -->
+  <div id="create-form" hidden>
+    <div id="create-rows"></div>
+    <button id="add-row-btn" class="add-btn">+</button>
+  </div>
+
+  <!-- The one budget that is displayed -->
+  <div id="budget-display"></div>
+
+  <script>
+    let budgets = [];
+    let creating = false;
+    let managing = false;
+
+    const display = document.getElementById("budget-display");
+    const createBtn = document.getElementById("create-btn");
+    const createForm = document.getElementById("create-form");
+    const rowsEl = document.getElementById("create-rows");
+
+    // ---------- Helpers ----------
+
+    async function api(url, method, body) {
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: body ? JSON.stringify(body) : undefined,
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "Request failed");
+      }
+      return res.json();
+    }
+
+    function cleanAmount(text) {
+      let s = text.replace(/[^0-9.]/g, "");
+      const i = s.indexOf(".");
+      if (i !== -1) s = s.slice(0, i + 1) + s.slice(i + 1).replace(/\./g, "");
+      return s;
+    }
+
+    function money(n) {
+      return "$" + n.toLocaleString(undefined, {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      });
+    }
+
+    function makeEl(tag, className, text) {
+      const el = document.createElement(tag);
+      if (className) el.className = className;
+      if (text !== undefined) el.textContent = text;
+      return el;
+    }
+
+    // One row = bold title bar + longer amount bar with "$" built in
+    function addRow(container, title = "", amount = "") {
+      const row = makeEl("div", "item-row");
+
+      const t = makeEl("input", "title-input");
+      t.type = "text";
+      t.placeholder = "Budget title";
+      t.value = title;
+
+      const a = makeEl("input", "amount-input");
+      a.type = "text";
+      a.inputMode = "decimal";
+      a.value = "$" + amount;
+      a.addEventListener("input", () => {
+        const v = "$" + cleanAmount(a.value);
+        if (a.value !== v) a.value = v;   // keeps the $ and only allows numbers
+      });
+
+      row.append(t, a);
+      container.appendChild(row);
+    }
+
+    function readRows(container) {
+      return [...container.querySelectorAll(".item-row")]
+        .map(row => ({
+          title: row.querySelector(".title-input").value.trim(),
+          amount: parseFloat(row.querySelector(".amount-input").value.slice(1)) || 0,
+        }))
+        .filter(item => item.title || item.amount);
+    }
+
+    // ---------- Display the budget ----------
+
+    function renderDisplay() {
+      display.replaceChildren();
+
+      if (budgets.length === 0) {
+        display.appendChild(makeEl("p", "muted", "No budget yet. Click Create Budget to make one."));
+        return;
+      }
+
+      // The oldest budget keeps priority; newer ones stay stored in the background
+      const budget = budgets[0];
+
+      const card = makeEl("div", "budget-card");
+      const header = makeEl("div", "card-header");
+      header.appendChild(makeEl("h2", "", "Current Budget"));
+
+      const manageBtn = makeEl("button", "", managing ? "Save" : "Manage Budget");
+      header.appendChild(manageBtn);
+      card.appendChild(header);
+
+      if (managing) {
+        const rows = makeEl("div");
+        budget.items.forEach(item => addRow(rows, item.title, String(item.amount)));
+        card.appendChild(rows);
+
+        manageBtn.addEventListener("click", async () => {
+          const items = readRows(rows);
+          if (!items.length) { alert("A budget needs at least one item."); return; }
+          try {
+            await api("/api/budgets/" + budget.id, "PUT", { items });
+            managing = false;
+            await loadBudgets();
+          } catch (e) { alert(e.message); }
+        });
+      } else {
+        budget.items.forEach(item => {
+          const el = makeEl("div", "item");
+          el.appendChild(makeEl("div", "title", item.title || "(untitled)"));
+          el.appendChild(makeEl("div", "", money(item.amount)));
+          card.appendChild(el);
+        });
+
+        manageBtn.addEventListener("click", () => {
+          managing = true;
+          renderDisplay();
+        });
+      }
+
+      if (budgets.length > 1) {
+        const others = budgets.length - 1;
+        card.appendChild(makeEl("div", "muted", others + " other budget(s) stored in the background"));
+      }
+
+      display.appendChild(card);
+    }
+
+    async function loadBudgets() {
+      try {
+        const data = await api("/api/budgets", "GET");
+        budgets = data.budgets;
+      } catch (e) {
+        budgets = [];
+      }
+      renderDisplay();
+    }
+
+    // ---------- Create / Confirm ----------
+
+    createBtn.addEventListener("click", async () => {
+      if (!creating) {
+        creating = true;
+        createBtn.textContent = "Confirm";
+        rowsEl.replaceChildren();
+        addRow(rowsEl);
+        createForm.hidden = false;
+        return;
+      }
+
+      const items = readRows(rowsEl);
+      if (!items.length) { alert("Add a title or an amount first."); return; }
+
+      try {
+        await api("/api/budgets", "POST", { items });
+        creating = false;
+        createBtn.textContent = "Create Budget";
+        createForm.hidden = true;
+        await loadBudgets();
+      } catch (e) { alert(e.message); }
+    });
+
+    document.getElementById("add-row-btn").addEventListener("click", () => addRow(rowsEl));
+
+    loadBudgets();
+  </script>
+</body>
+</html>
