@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+<head><title>Profile</title></head>
+<body>
+  <nav> <a href="/profile">Profile</a> | <a href="/setting">Setting</a></nav>
+  <nav><a href="/dashboard">Dashboard</a> | <a href="/budget">Budget</a> | <a href="/expenses">Expenses</a> | <a href="/logout">Log out</a></nav>
+  <h1>Profile</h1>
+
+  <!-- Header: initials, name, and "member since" (the date uses the user's chosen date format) -->
+  <div>
+    <strong id="initials">{{ (user.first_name[0] ~ user.last_name[0]) | upper }}</strong>
+    <h2 id="full-name">{{ user.first_name }} {{ user.last_name }}</h2>
+    <p>Owner &middot; Personal account &middot; Member since {{ user.created_at | fmt_date }}</p>
+    <!-- "Change photo" button: not wired to the backend yet -->
+  </div>
+
+  <form id="profile-form">
+    <h3>Personal details</h3>
+    <p>Used on statements and for verifying your identity.</p>
+    <label>First name <input type="text" name="first_name" value="{{ user.first_name }}" maxlength="50" required></label>
+    <label>Last name <input type="text" name="last_name" value="{{ user.last_name }}" maxlength="50" required></label>
+    <label>Email <input type="email" name="email" value="{{ user.email }}" required></label>
+    <br>
+    <!-- Phone: numbers only (10 digits). Typed spaces, dashes and brackets are dropped by the backend. -->
+    <label>Phone <input type="tel" name="phone" inputmode="numeric" placeholder="(000) 000-0000" value="{{ user.phone or '' }}"></label>
+    <!-- Birthday: the date picker. It always sends YYYY-MM-DD. -->
+    <label>Birthday <input type="date" name="birthday" value="{{ user.birthday or '' }}"></label>
+
+    <h3>Address</h3>
+    <label>Street address <input type="text" name="street_address" placeholder="Street and number" maxlength="100" value="{{ user.street_address or '' }}"></label>
+    <br>
+    <label>City <input type="text" name="city" placeholder="City" maxlength="50" value="{{ user.city or '' }}"></label>
+    <label>State <input type="text" name="state" placeholder="State" maxlength="50" value="{{ user.state or '' }}"></label>
+    <!-- ZIP: numbers only (5 digits) -->
+    <label>ZIP code <input type="text" name="zip_code" inputmode="numeric" placeholder="00000" maxlength="5" pattern="[0-9]{5}" value="{{ user.zip_code or '' }}"></label>
+    <br>
+    <button type="button" id="cancel-btn">Cancel</button>
+    <button type="submit">Save profile</button>
+  </form>
+  <p id="message"></p>
+
+  <script>
+    const form = document.getElementById("profile-form");
+    const message = document.getElementById("message");
+
+    // Cancel: reload the page so the inputs go back to what is saved
+    document.getElementById("cancel-btn").addEventListener("click", () => location.reload());
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      // Every input is sent. A blank optional field clears the saved value.
+      const body = Object.fromEntries(new FormData(form));
+      const res = await fetch("/api/profile", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        message.textContent = data.error || "Could not save.";
+        return;
+      }
+      // The saved profile comes back as {user: {...}}. Update the header with it.
+      const saved = data.user;
+      document.getElementById("full-name").textContent = saved.first_name + " " + saved.last_name;
+      document.getElementById("initials").textContent = (saved.first_name[0] + saved.last_name[0]).toUpperCase();
+      message.textContent = "Saved!";
+    });
+  </script>
+</body>
+</html>

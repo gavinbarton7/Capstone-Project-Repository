@@ -18,7 +18,26 @@ CREATE TABLE IF NOT EXISTS users (
     password_hash TEXT    NOT NULL,              -- salted hash, never plain text
     first_name    TEXT    NOT NULL,
     last_name     TEXT    NOT NULL,
-    created_at    TEXT    NOT NULL DEFAULT (datetime('now'))
+    created_at    TEXT    NOT NULL DEFAULT (datetime('now')),
+    -- Profile page fields, all optional (NULL = not filled in yet).
+    -- Older database files get these columns from database/db.py.
+    phone          TEXT,                         -- digits only, e.g. '5551234567'
+    birthday       TEXT,                         -- 'YYYY-MM-DD'
+    street_address TEXT,
+    city           TEXT,
+    state          TEXT,
+    zip_code       TEXT                          -- text so 02134 keeps its leading 0
+) STRICT;
+
+-- ---------------------------------------------------------------------------
+-- user_settings  (Settings page: one row per user, made the first time they
+-- change a setting; no row = the defaults below)
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS user_settings (
+    user_id     INTEGER PRIMARY KEY REFERENCES users(user_id) ON DELETE CASCADE,
+    language    TEXT    NOT NULL DEFAULT 'en-US',        -- 'en-US', 'es', 'fr'
+    date_format TEXT    NOT NULL DEFAULT 'MM/DD/YYYY',   -- or 'DD/MM/YYYY', 'YYYY-MM-DD'
+    week_start  TEXT    NOT NULL DEFAULT 'sunday'        -- 'sunday' ... 'saturday'
 ) STRICT;
 
 -- ---------------------------------------------------------------------------
