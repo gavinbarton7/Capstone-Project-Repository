@@ -1,0 +1,10 @@
+# Needed to run the backend on its own (HTML pages + API):
+Flask>=3.0
+
+# Optional. Only the team repo needs these (bank connection through Plaid).
+# Without them the backend still runs; /api/plaid/... is simply left out.
+#   plaid-python>=47.0.0
+#   python-dotenv>=1.2.4
+
+# Only to run the tests:
+#   pytest>=8.0
